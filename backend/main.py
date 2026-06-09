@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware 
 from pydantic import BaseModel
+from chains import question_chain
+from chains import evaluate_answer_chain
+from chains import interview_summary_chain
 from dotenv import load_dotenv
 import json
 import requests
@@ -25,70 +28,35 @@ class InterviewRequest(BaseModel):
     resume: str
     jobDescription: str
    
-def call_openrouter(prompt: str):
+# def call_openrouter(prompt: str):
 
-    response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "deepseek/deepseek-chat-v3-0324",
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
-            "response_format":{"type":"json_object"}
-        }
-    )
+#     response = requests.post(
+#         "https://openrouter.ai/api/v1/chat/completions",
+#         headers={
+#             "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+#             "Content-Type": "application/json"
+#         },
+#         json={
+#             "model": "deepseek/deepseek-chat-v3-0324",
+#             "messages": [
+#                 {"role": "user", "content": prompt}
+#             ],
+#             "response_format":{"type":"json_object"}
+#         }
+#     )
 
-    return response.json() 
+#     return response.json() 
  
 @app.post("/generate-questions")
 def generate_questions(request: InterviewRequest):
     
-    prompt = f"""
-    You are a senior software engineering interviewer.
+    result = question_chain.invoke({
+        "resume": request.resume,
+        "job_description": request.jobDescription
+    })
     
-    Return ONLY valid JSON in this format:
-    
-    {{
-        "technical": [
-            "question1",
-            "question2",
-            "question3",
-            "question4",
-            "question5"],
-        "behavioral":[
-            "question1",
-            "question2",
-            "question3"
-        ] 
-    }}
-    
-    Generate EXACTLY:
-    - 5 technical questions
-    - 3 behavioral questions
 
-    Resume:
-    {request.resume}
-
-    Job Description:
-    {request.jobDescription}
-
-    """
-    
-    data = call_openrouter(prompt)
-    
-    print("OPENROUTER RAW RESPONSE:", data)
-    
-    if "choices" not in data:
-        return {
-            "error": data
-        }
-
-    content=data["choices"][0]["message"]["content"]
-    
+    content = result.content    
     content = re.sub(r"```json", "", content)
     content = re.sub(r"```", "", content)
     content = content.strip()
@@ -105,36 +73,18 @@ class AnswerRequest(BaseModel):
 @app.post('/evaluate-answer')
 def evaluate_answer(request:AnswerRequest):
     
-   prompt = f"""
+    result = evaluate_answer_chain.invoke({
+        "question": request.question,
+        "answer": request.answer
+    })
+
+    content = result.content
    
-   You are an expert interviewer.
+    content = re.sub(r"```json", "", content)
+    content = re.sub(r"```", "", content)
+    content = content.strip()
    
-   Question:
-   {request.question}
-   
-   Candidate Answer:
-   {request.answer}
-   
-   Return JSON:
-   {{
-       ”score": 0-10
-       "strengths": [],
-       "weaknesses": [],
-       "improved_answer": "",
-       "follow_up_question": ""
-   }}
-   
-   """
-   
-   data = call_openrouter(prompt)
-   
-   content = data["choices"][0]["message"]["content"]
-   
-   content = re.sub(r"```json", "", content)
-   content = re.sub(r"```", "", content)
-   content = content.strip()
-   
-   return json.loads(content)
+    return json.loads(content)
 
 
 
@@ -144,32 +94,11 @@ class InterviewSummaryRequest(BaseModel):
 @app.post('/interview-summary')
 def interview_summary(request: InterviewSummaryRequest):
     
-    prompt = f"""
-    
-    You are a senior engineering interviewer.
-    
-    Candidate Answers:
+    result = interview_summary_chain.invoke({
+        "answers": request.answers
+    })
 
-    {request.answers}
-    
-    Evaluate the overall interview.
-    
-    Return JSON:
-    
-    {{
-      "overall_score": 0-10,
-      "technical_score": 0-10,
-      "communication_score": 0-10,
-      "problem_solving_score": 0-10,
-      "recommendation": "",
-      "summary": ""
-    }}
-    
-    """
-    
-    data = call_openrouter(prompt)
-    
-    content = data["choices"][0]["message"]["content"]
+    content = result.content
    
     content = re.sub(r"```json", "", content)
     content = re.sub(r"```", "", content)
