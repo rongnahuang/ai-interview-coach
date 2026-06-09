@@ -1,4 +1,5 @@
 from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 from llm import llm
 
 generate_questions_prompt = PromptTemplate.from_template(
@@ -22,7 +23,7 @@ Return JSON only.
 """
 )
 
-question_chain = generate_questions_prompt | llm
+
 
 
 evaluate_answer_prompt = PromptTemplate.from_template("""
@@ -45,7 +46,6 @@ Return JSON only:
 }}
 """)
 
-evaluate_answer_chain = evaluate_answer_prompt | llm
 
 
 interview_summary_prompt = PromptTemplate.from_template("""
@@ -68,5 +68,11 @@ Return JSON only:
 }}
 """)
 
-interview_summary_chain = interview_summary_prompt | llm
+parser = JsonOutputParser()
+
+question_chain = generate_questions_prompt | llm | parser
+
+evaluate_answer_chain = evaluate_answer_prompt | llm | parser
+
+interview_summary_chain = interview_summary_prompt | llm | parser
 
