@@ -50,21 +50,12 @@ class InterviewRequest(BaseModel):
 @app.post("/generate-questions")
 def generate_questions(request: InterviewRequest):
     
-    result = question_chain.invoke({
+    return question_chain.invoke({
         "resume": request.resume,
         "job_description": request.jobDescription
     })
     
 
-    content = result.content    
-    content = re.sub(r"```json", "", content)
-    content = re.sub(r"```", "", content)
-    content = content.strip()
-
-    return {
-        "questions": json.loads(content)
-    }
-    
     
 class AnswerRequest(BaseModel):
     question: str
@@ -73,18 +64,12 @@ class AnswerRequest(BaseModel):
 @app.post('/evaluate-answer')
 def evaluate_answer(request:AnswerRequest):
     
-    result = evaluate_answer_chain.invoke({
+    return  evaluate_answer_chain.invoke({
         "question": request.question,
         "answer": request.answer
     })
 
-    content = result.content
-   
-    content = re.sub(r"```json", "", content)
-    content = re.sub(r"```", "", content)
-    content = content.strip()
-   
-    return json.loads(content)
+
 
 
 
@@ -94,14 +79,7 @@ class InterviewSummaryRequest(BaseModel):
 @app.post('/interview-summary')
 def interview_summary(request: InterviewSummaryRequest):
     
-    result = interview_summary_chain.invoke({
+    return interview_summary_chain.invoke({
         "answers": request.answers
     })
 
-    content = result.content
-   
-    content = re.sub(r"```json", "", content)
-    content = re.sub(r"```", "", content)
-    content = content.strip()
-    
-    return json.loads(content)

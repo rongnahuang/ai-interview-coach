@@ -38,7 +38,7 @@ function App() {
     });
 
     const data = await response.json();
-    setQuestions(data.questions as QuestionSet);
+    setQuestions(data);
   };
 
   const handleAnswerChange = (question: string, value: string) => {
